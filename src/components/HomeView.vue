@@ -1,6 +1,6 @@
 <!-- eslint-disable prettier/prettier -->
 <template>
-  <h1>Simulador de procesos</h1>
+  <h1>Simulador de procesos (RR)</h1>
   <section style="display: flex; padding: 10px 50px;">
     <div class="form-wrapper">
       <div class="row">
@@ -18,6 +18,7 @@
       <div class="group-input">
         <label for="catalogInput">Catalog</label>
         <select id="catalogInput" v-model="selectorRef">
+          <option value="" disabled selected>Escoge un catalogo</option>
           <template v-for="(option, index) in catalogSelectorOptions" :key="index">
             <option :value="option.id">{{ option.name }}</option>
           </template>
@@ -50,9 +51,10 @@ const simulationModel: any = defineModel();
 const colors = ref([]);
 
 const getBurstTime = (word: string, threadTime: number) => {
-  const tr = (word.length * threadTime);
-  console.log("TR", tr);
-  return tr;
+  //if (word.includes(" ")) {
+  //  return word.split(" ").join("").length * threadTime;
+  //}
+  return (word.length * threadTime);
 }
 
 const getProcesses = () => {
@@ -94,6 +96,23 @@ watch(selectorRef, (newValue) => {
 .group-input {
   display: flex;
   flex-direction: column;
+}
+
+select {
+  border: 1px solid gray;
+  border-radius: 15px;
+  padding: 5px 8px;
+}
+
+label {
+  color: rgb(70, 70, 70);
+  margin-bottom: 5px;
+}
+
+input {
+  border: 1px solid gray;
+  border-radius: 15px;
+  padding: 5px 8px;
 }
 
 .row {

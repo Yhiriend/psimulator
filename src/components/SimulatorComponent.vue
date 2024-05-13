@@ -6,7 +6,7 @@
             <i class="bi bi-pause-circle-fill"></i>
         </button>
         <button @click="stopSimulation"><i class="bi bi-stop-circle-fill"></i></button>
-        <p style="color: black;">Tiempo: {{ tiempoActual * quantum }}</p>
+        <p style="color: black;">Tiempo: {{ processEnded[processEnded.length - 1]?.tf ?? 0 }}</p>
     </div>
     <div class="wrapper">
 
