@@ -10,4 +10,7 @@ export default interface Process {
   tr?: number;
   tf?: number;
   timesExecuted?: number;
+  currentTime?: number;
+  timeArrive: number;
+  color: string;
 }

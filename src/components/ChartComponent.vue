@@ -1,0 +1,58 @@
+<!-- eslint-disable prettier/prettier -->
+<template>
+    <Chart :size="{ width: 500, height: 200 }" :data="modelValue ?? []" :margin="margin" :direction="direction"
+        :axis="axis">
+
+        <template #layers>
+            <Grid strokeDasharray="2,2" />
+            <Area :dataKeys="['name', 'tr']" type="monotone" :areaStyle="{ fill: 'url(#grad)' }" />
+            <Line :dataKeys="['name', 'tr']" type="monotone" :lineStyle="{
+                stroke: '#9f7aea'
+            }" />
+            <Marker v-if="marker" :value="1000" label="Mean." color="green" strokeWidth="2" strokeDasharray="6 6" />
+            <defs>
+                <linearGradient id="grad" gradientTransform="rotate(90)">
+                    <stop offset="0%" stop-color="#be90ff" stop-opacity="1" />
+                    <stop offset="100%" stop-color="white" stop-opacity="0.4" />
+                </linearGradient>
+            </defs>
+        </template>
+
+        <template #widgets>
+            <Tooltip borderColor="#48CAE4" :config="{
+                pl: { color: '#9f7aea' },
+                avg: { hide: true },
+                inc: { hide: true }
+            }" />
+        </template>
+
+    </Chart>
+</template>
+<!-- eslint-disable prettier/prettier -->
+
+<script setup lang="ts">
+import { ref, defineProps } from 'vue'
+import { Chart, Grid, Line } from 'vue3-charts'
+import { plByMonth } from "@/assets/chartdata"
+
+defineProps<{ modelValue: any[] }>();
+const data = ref(plByMonth)
+const direction = ref('horizontal')
+const margin = ref({
+    left: 0,
+    top: 20,
+    right: 20,
+    bottom: 0
+})
+
+const axis = ref({
+    primary: {
+        type: 'band'
+    },
+    secondary: {
+        domain: ['dataMin', 'dataMax + 100'],
+        type: 'linear',
+        ticks: 8
+    }
+})
+</script>

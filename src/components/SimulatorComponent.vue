@@ -1,12 +1,13 @@
 <!-- eslint-disable prettier/prettier -->
 <template>
-    <div style="margin: 20px 0">
+    <div style="margin: 20px 0 0 0">
         <button @click="startSimulation" :disabled="simulationRunning"><i class="bi bi-play-fill"></i></button>
         <button @click="pauseSimulation" :disabled="!simulationRunning">
             <i class="bi bi-pause-circle-fill"></i>
         </button>
         <button @click="stopSimulation"><i class="bi bi-stop-circle-fill"></i></button>
-        <p style="color: black;">Tiempo: {{ processEnded[processEnded.length - 1]?.tf ?? 0 }}</p>
+        <p style="color: black;">Tiempo: {{ processReady[processReady.length - 1]?.currentTime ??
+            processEnded[processEnded.length - 1]?.currentTime }}</p>
     </div>
     <div class="wrapper">
 
@@ -17,9 +18,13 @@
                     <div class="process processready" :style="{ background: process.color ?? '#3D8CC7' }"
                         :id="`ready_${indexProcessReady}`">
                         <p style="font-size: large; font-weight: bold;">{{ process.name }}</p>
-                        <p class="pid">PID: {{ process.PID }}</p>
-                        <p class="timesexe">Ejecutado: {{ process.timesExecuted ?? 0 }} veces</p>
-                        <p class="timeended">T. Finalizacion: {{ process.timesExecuted * quantum }}</p>
+                        <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}</p>
+                        <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
+                            process.timeArrive ?? 0 }}</p>
+                        <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
+                            process.currentTime }}</p>
+                        <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
+                            process.timesExecuted ?? 0 }}</p>
                     </div>
                 </template>
             </div>
@@ -30,10 +35,14 @@
             <div class="processes-wrapper" v-if="hasInitSimulation">
                 <div class="process" :style="{ background: procesoEnEjecucion.color ?? '#3D8CC7' }" id="execution"
                     v-if="procesoEnEjecucion">
-                    <p style="font-size: large; font-weight: bold;">{{ procesoEnEjecucion?.name ?? "" }}</p>
-                    <p class="pid">PID: {{ procesoEnEjecucion?.PID ?? "" }}</p>
-                    <p class="timesexe">Ejecutado: {{ procesoEnEjecucion?.timesExecuted ?? 0 }} veces</p>
-                    <p class="timeended">T. Finalizacion: {{ procesoEnEjecucion.timesExecuted * quantum }}</p>
+                    <p style="font-size: large; font-weight: bold;">{{ procesoEnEjecucion.name }}</p>
+                    <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ procesoEnEjecucion.PID }}</p>
+                    <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
+                        procesoEnEjecucion.timeArrive ?? 0 }}</p>
+                    <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
+                        procesoEnEjecucion.currentTime }}</p>
+                    <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
+                        procesoEnEjecucion.timesExecuted ?? 0 }}</p>
                 </div>
             </div>
         </div>
@@ -44,9 +53,13 @@
                 <template v-for="(process, index) in processEnded ?? []" :key="index">
                     <div class="process" :style="{ background: process.color ?? '#3D8CC7' }" id="ended">
                         <p style="font-size: large; font-weight: bold;">{{ process.name }}</p>
-                        <p class="pid">PID: {{ process.PID }}</p>
-                        <p class="timesexe">Ejecutado: {{ process.timesExecuted ?? 0 }} veces</p>
-                        <p class="timeended">T. Finalizacion: {{ process.tf }}</p>
+                        <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}</p>
+                        <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
+                            process.timeArrive ?? 0 }}</p>
+                        <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
+                            process.currentTime }}</p>
+                        <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
+                            process.timesExecuted ?? 0 }}</p>
                     </div>
                 </template>
             </div>
@@ -59,12 +72,12 @@
 </template>
 <!-- eslint-disable prettier/prettier -->
 <script setup lang="ts">
-import { defineProps, onMounted, onUnmounted, onUpdated, watch, ref } from 'vue';
+import { defineProps, onMounted, onUnmounted, onUpdated, watch, ref, computed } from 'vue';
 import Process from '../models/process.model';
 const props = defineProps<{ modelValue: any; processes: Process[]; quantum: number; }>()
-const processReady = ref<any[]>([]);
-const processExecuted = ref<any[]>([]);
-const processEnded = ref<any[]>([]);
+const processReady = ref<Process[]>([]);
+const processExecuted = ref<Process[]>([]);
+const processEnded = ref<Process[]>([]);
 const simulationRunning = ref(false);
 const hasInitSimulation = ref(false);
 const hasEndedSimulation = ref(false);
@@ -104,7 +117,6 @@ const simulateRR = async (listo: Process[], ejecucion: Process[], terminado: Pro
     while (listo.length > 0 || ejecucion.length > 0) {
 
         if (!simulationRunning.value) {
-            // La simulación está en pausa, salimos del bucle
             break;
         }
 
@@ -127,6 +139,7 @@ const simulateRR = async (listo: Process[], ejecucion: Process[], terminado: Pro
             await delay(cicleTimeSimulation);
             startAnimationSlideUp();
             await delay(500);
+            procesoActual.currentTime = totalQuantums;
             listo.push(procesoActual);
             ejecucion.shift();
             miAudio.value.play();
@@ -138,7 +151,7 @@ const simulateRR = async (listo: Process[], ejecucion: Process[], terminado: Pro
             await delay(cicleTimeSimulation);
             startAnimationSlideDown();
             await delay(500);
-            procesoActual.tf! = totalQuantums;
+            procesoActual.currentTime! = totalQuantums;
             terminado.push(procesoActual);
             ejecucion.shift();
             miAudio.value.play();
@@ -278,7 +291,7 @@ h3 {
     background: white;
     border-radius: 20px;
     padding: 20px;
-    margin: 30px;
+    margin: 10px 30px 30px 30px;
     box-shadow: 10px 10px 20px 1px rgba(0, 0, 0, 0.11);
 }
 

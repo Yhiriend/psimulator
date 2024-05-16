@@ -27,6 +27,8 @@
 
     </div>
 
+    <ChartComponent v-model="chartProcesses" class="chart" />
+
   </section>
   <div class="simulator-wrapper" style="padding-bottom: 20px;">
     <SimulatorComponent v-model="simulationModel" :processes="processes" :quantum="quantumInput"
@@ -40,6 +42,7 @@ import SimulatorComponent from "./SimulatorComponent.vue";
 import { PROCESSES as CATALOGUES } from "@/assets/processes";
 import { getRandomColor } from "@/utils/utils";
 import { onMounted, ref, watch, defineModel } from "vue";
+import ChartComponent from "./ChartComponent.vue";
 
 const catalogSelectorOptions: any = ref([]);
 const selectorRef = ref();
@@ -49,6 +52,7 @@ const thInput = ref();
 const isStarted = ref(false);
 const simulationModel: any = defineModel();
 const colors = ref([]);
+const chartProcesses = ref();
 
 const getBurstTime = (word: string, threadTime: number) => {
   //if (word.includes(" ")) {
@@ -67,11 +71,13 @@ onMounted(() => {
 
 watch(selectorRef, (newValue) => {
   catalogSelectorOptions.value = CATALOGUES.map((c: any) => {
-    const processesMap = c.processes.map((p: any) => {
+    const processesMap = c.processes.map((p: any, index: number) => {
       return {
         ...p,
         tr: getBurstTime(p.description, thInput.value ?? 1),
         timesExecuted: 0,
+        timeArrive: index,
+        currentTime: 0,
         tf: getBurstTime(p.description, thInput.value ?? 1),
         color: getRandomColor(colors.value)
       }
@@ -80,10 +86,15 @@ watch(selectorRef, (newValue) => {
     return c;
   });
   simulationModel.value = { processReady: getProcesses(), processExecuted: [], processEnded: [] };
+  chartProcesses.value = getProcesses();
 });
 </script>
 
 <style scoped>
+.chart {
+  width: 100%;
+}
+
 .form-wrapper {
   height: fit-content;
   width: fit-content;
