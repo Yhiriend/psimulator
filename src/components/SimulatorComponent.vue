@@ -6,26 +6,20 @@
             <i class="bi bi-pause-circle-fill"></i>
         </button>
         <button @click="stopSimulation"><i class="bi bi-stop-circle-fill"></i></button>
-        <p style="color: black;">Tiempo: {{ processReady[processReady.length - 1]?.currentTime ??
-            processEnded[processEnded.length - 1]?.currentTime }}</p>
+        <p style="color: black;">Tiempo: {{ processReady[processReady.length - 1]?.tf ??
+            processEnded[processEnded.length - 1]?.tf }}</p>
     </div>
     <div class="wrapper">
+      <h3>Listo</h3>
+        <div style="width: 95%; display: flex; justify-content: start">
+          <div class="first-processes-wrapper">
+            <ProcessCardComponent v-if="firstProcessReady" :process="firstProcessReady" process-id="first-process-ready"></ProcessCardComponent>
 
-        <div style="width: 95%;">
-            <h3>Listo</h3>
+          </div>
+
             <div class="processes-wrapper">
                 <template v-for="(process, index) in processReady ?? []" :key="index">
-                    <div class="process processready" :style="{ background: process.color ?? '#3D8CC7' }"
-                        :id="`ready_${indexProcessReady}`">
-                        <p style="font-size: large; font-weight: bold;">{{ process.name }}</p>
-                        <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}</p>
-                        <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
-                            process.timeArrive ?? 0 }}</p>
-                        <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
-                            process.currentTime }}</p>
-                        <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
-                            process.timesExecuted ?? 0 }}</p>
-                    </div>
+                    <ProcessCardComponent :process="process"></ProcessCardComponent>
                 </template>
             </div>
         </div>
@@ -33,17 +27,7 @@
         <div>
             <h3>En ejecucion</h3>
             <div class="processes-wrapper" v-if="hasInitSimulation">
-                <div class="process" :style="{ background: procesoEnEjecucion.color ?? '#3D8CC7' }" id="execution"
-                    v-if="procesoEnEjecucion">
-                    <p style="font-size: large; font-weight: bold;">{{ procesoEnEjecucion.name }}</p>
-                    <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ procesoEnEjecucion.PID }}</p>
-                    <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
-                        procesoEnEjecucion.timeArrive ?? 0 }}</p>
-                    <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
-                        procesoEnEjecucion.currentTime }}</p>
-                    <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
-                        procesoEnEjecucion.timesExecuted ?? 0 }}</p>
-                </div>
+                <ProcessCardComponent :process="procesoEnEjecucion"></ProcessCardComponent>
             </div>
         </div>
         <div style="width: 20px"></div>
@@ -74,6 +58,7 @@
 <script setup lang="ts">
 import { defineProps, onMounted, onUnmounted, onUpdated, watch, ref, computed } from 'vue';
 import Process from '../models/process.model';
+import ProcessCardComponent from "@/components/ProcessCardComponent.vue";
 const props = defineProps<{ modelValue: any; processes: Process[]; quantum: number; }>()
 const processReady = ref<Process[]>([]);
 const processExecuted = ref<Process[]>([]);
@@ -82,14 +67,17 @@ const simulationRunning = ref(false);
 const hasInitSimulation = ref(false);
 const hasEndedSimulation = ref(false);
 const procesoEnEjecucion = ref();
+const firstProcessReady = ref<Process>();
 const tiempoActual = ref(0);
 const cicleTimeSimulation = 1000;
 const miAudio = ref();
 const indexProcessReady = ref(0);
 watch(props, (newValue) => {
     if (!simulationRunning.value) {
-        const copi = JSON.stringify(newValue.modelValue?.processReady || []);
-        processReady.value = JSON.parse(copi);
+        //const copi = JSON.stringify(newValue.modelValue?.processReady || []);
+        const copi = newValue.modelValue?.processReady || [];
+        processReady.value = copi.slice(1, copi.length)
+        firstProcessReady.value = copi[0];
     }
 });
 
@@ -121,46 +109,56 @@ const simulateRR = async (listo: Process[], ejecucion: Process[], terminado: Pro
         }
 
         if (ejecucion.length === 0 && listo.length > 0) {
-            await delay(cicleTimeSimulation);
+          await delay(cicleTimeSimulation);
+
+          if (firstProcessReady.value?.timeArrive === 0) {
             await startAnimationSlideDownRec();
-            await delay(700);
-            ejecucion.push(listo.shift()!);
-            miAudio.value.play();
-        }
-        const procesoActual = ejecucion[0];
-        let tiempoRestante = procesoActual.tr! - quantum;
 
-        procesoEnEjecucion.value = procesoActual;
+          }
+            // await delay(700);
+            // await startAnimationFirstProcessReady();
+            // miAudio.value.play();
+          if (!procesoEnEjecucion.value){
+            procesoEnEjecucion.value = firstProcessReady.value!
+            firstProcessReady.value = undefined;
+          }
 
-        procesoActual.timesExecuted! += 1;
-        totalQuantums += quantum;
-        if (tiempoRestante > 0) {
-            procesoActual.tr = tiempoRestante;
-            await delay(cicleTimeSimulation);
-            startAnimationSlideUp();
-            await delay(500);
-            procesoActual.currentTime = totalQuantums;
-            listo.push(procesoActual);
-            ejecucion.shift();
-            miAudio.value.play();
-        } else {
-            if (tiempoRestante < 0) {
-                totalQuantums = totalQuantums + tiempoRestante;
-            }
-            procesoActual.timesExecuted = procesoActual.timesExecuted!++;
-            await delay(cicleTimeSimulation);
-            startAnimationSlideDown();
-            await delay(500);
-            procesoActual.currentTime! = totalQuantums;
-            terminado.push(procesoActual);
-            ejecucion.shift();
-            miAudio.value.play();
+          firstProcessReady.value = listo.shift();
         }
 
-        if (terminado.includes(procesoActual) || listo.includes(procesoActual)) {
+        //const procesoActual = ejecucion[0];
+        //let tiempoRestante = procesoActual.tr! - quantum;
 
-            procesoEnEjecucion.value = null;
-        }
+        //procesoEnEjecucion.value = procesoActual;
+
+      // procesoActual.timesExecuted! += 1;
+      // totalQuantums += quantum;
+      // if (tiempoRestante > 0) {
+      //   procesoActual.tr = tiempoRestante;
+      //   await delay(cicleTimeSimulation);
+      //   // startAnimationSlideUp();
+      //   // await delay(500);
+      //   listo.push(procesoActual);
+      //   ejecucion.shift();
+      //   // miAudio.value.play();
+      // } else {
+      //   if (tiempoRestante < 0) {
+      //     totalQuantums = totalQuantums + tiempoRestante;
+      //   }
+      //   procesoActual.timesExecuted = procesoActual.timesExecuted!++;
+      //   await delay(cicleTimeSimulation);
+      //   // startAnimationSlideDown();
+      //   // await delay(500);
+      //   procesoActual.currentTime! = totalQuantums;
+      //   terminado.push(procesoActual);
+      //   ejecucion.shift();
+      //   // miAudio.value.play();
+      // }
+      //
+      // if (terminado.includes(procesoActual) || listo.includes(procesoActual)) {
+      //
+      //   procesoEnEjecucion.value = null;
+      // }
 
         console.log('Simulando...');
         tiempoActual.value += 1;
@@ -184,6 +182,15 @@ const startAnimationSlideDown = () => {
     }
 }
 
+const startAnimationFirstProcessReady = async () => {
+    const firstProcess = document.getElementById('first-process-ready');
+    if (firstProcess) {
+        firstProcess.classList.toggle('slide-from-right-to-left');
+        await delay(600);
+      firstProcess.classList.toggle('slide-from-right-to-left');
+    }
+}
+
 const startAnimationSlideUp = () => {
     const firstProcess = document.getElementById('execution');
     if (firstProcess) {
@@ -192,12 +199,12 @@ const startAnimationSlideUp = () => {
 }
 
 const startAnimationSlideDownRec = async () => {
-    const firstProcess = document.getElementById('ready_0');
-    firstProcess!.classList.remove('slide-down-rec-animation');
+    const firstProcess = document.getElementById('first-process-ready');
     await delay(500);
     if (firstProcess) {
         firstProcess.classList.add('slide-down-rec-animation');
         //indexProcessReady.value += 1;
+        await delay(700);
     }
 }
 
@@ -249,10 +256,26 @@ const delay = (ms: number) => {
     }
 }
 
+.slide-from-right-to-left {
+  animation-name: slideRightToLeft;
+  animation-duration: 0.6s;
+}
+
+@keyframes slideRightToLeft {
+  from {
+    transform: translateX(200px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
 .slide-up-animation {
     animation-name: slideUp;
     animation-duration: 0.7s;
 }
+
 
 @keyframes slideUp {
     from {
@@ -295,15 +318,27 @@ h3 {
     box-shadow: 10px 10px 20px 1px rgba(0, 0, 0, 0.11);
 }
 
+.first-processes-wrapper{
+  position: relative;
+  display: flex;
+  border: 1px solid rgb(233, 233, 233);
+  border-radius: 15px;
+  padding: 8px 14px;
+  height: 140px;
+  width: 130px;
+}
+
 .processes-wrapper {
     position: relative;
     display: flex;
     border: 1px solid rgb(233, 233, 233);
     border-radius: 15px;
     padding: 8px 14px;
-    height: 130px;
-    width: 100%;
-    min-width: 100%;
+    height: 140px;
+    width: fit-content;
+    min-width: 20%;
+    max-width: 80%;
+    overflow-x: auto;
 }
 
 .process {
