@@ -3,20 +3,25 @@
 (DONE) - Obtener datos de los procesos mediante servicios
 
 - Un proceso es liberado de la CPU si
+
   - culminó su actividad en su totalidad
   - el proceso es expulsivo
-- El proceso pasa de EJECUCION a LISTO si cumple que el proceso es expulsivo
+
+(DONE) - El proceso pasa de EJECUCION a LISTO si cumple que el proceso es expulsivo
+
 - La unidad de tiempo es dada en milisegundos
 - TH en milisegundos
-- TR=TH\*(cantidad de caracteres en la descripcion)
+
+(DONE) - TR=TH\*(cantidad de caracteres en la descripcion)
+
 - La simulacion puede ser interrumpida y reanudada en cualquier momento
 - Cada proceso debe mantener su propio hilo de ejecucion
   - El tiempo asumido en cada caracter copiado en el archivo corresponde a TH
     tiempo que determina cuanto debe esperar el hilo para nuevamente iniciar
     su actividad.
-- El tiempo de llegada de cada proceso se determina asi:
-  - Si listo es vacio: Tiempo de llegada <- 0
-  - sino: Tiempo de llegada <- process_index + 1
+    (DONE) - El tiempo de llegada de cada proceso se determina asi:
+    - Si listo es vacio: Tiempo de llegada <- 0
+    - sino: Tiempo de llegada <- process_index + 1
 - El tiempo de finalizacion se calcula:
   - Tiempo de finalizacion <- Quantum \* #Ejecuciones
 

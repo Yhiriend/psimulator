@@ -6,7 +6,9 @@
     :style="{ background: process.color ?? '#3D8CC7' }"
     v-if="process"
   >
-    <p style="font-size: large; font-weight: bold">{{ process.name }}</p>
+    <p style="font-size: large; font-weight: bold">
+      {{ process.name.slice(0, 11) }}
+    </p>
     <p class="pid">
       <span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}
     </p>

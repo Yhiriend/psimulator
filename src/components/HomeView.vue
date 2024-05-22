@@ -84,6 +84,7 @@ const getProcesses = () => {
         currentTime: 0,
         tf: getBurstTime(p.description, thInput.value ?? 1),
         color: getRandomColor(colors.value),
+        quantum: 0,
       };
     });
 };

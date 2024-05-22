@@ -3,6 +3,7 @@
     <button @click="startSimulation">Iniciar Simulación</button>
     <button @click="pauseSimulation">Pausar Simulación</button>
     <button @click="resumeSimulation">Reanudar Simulación</button>
+    <p style="font-size: 20; font-weight: bold">Time: {{ timeCount }}</p>
     <!-- Lista de procesos -->
     <section class="simulator-wrapper">
       <section class="process-ready-wrapper">
@@ -34,9 +35,13 @@
           height: fit-content;
         "
       >
-        <section class="process-execution-wrapper">
+        <section class="process-execution-wrapper" style="position: relative">
           <div class="text-execution" style="position: relative">
             <h3 style="text-align: start; padding-left: 40px">En ejecucion</h3>
+          </div>
+          <div class="quantum-counter">
+            <p style="color: gray">Quantum</p>
+            <h4 style="color: gray">{{ quantumCounter }}</h4>
           </div>
           <div class="process-executing">
             <div class="animation-execution-wrapper">
@@ -98,6 +103,7 @@
 <script setup lang="ts">
 import { ref, defineProps, onMounted, watch } from "vue";
 import ProcessCardComponent from "./ProcessCardComponent.vue";
+import { writeProcessCharacter } from "@/services/api.service";
 
 const animationMoveToLeftDelay = 900;
 const styleFinish = ref("end");
@@ -110,6 +116,9 @@ let running = false;
 const processReadyToExecute = ref();
 const processCarriage = ref();
 const processFinished = ref();
+const timeCount = ref(0);
+const quantumCounter = ref(0);
+const processHasEnded = ref(false);
 
 onMounted(() => {
   processList.value = [...props.processes];
@@ -200,12 +209,8 @@ async function simulateRoundRobin(
   running = false;
 }
 
-// Helper function to write a character to the file
 async function writeCharacterToFile(process: any) {
-  // Call your service method to write a character to the file
-  // Here we assume the method is `writeProcessCharacter` and it accepts the process
-  console.log("process", process);
-  //await writeProcessCharacter(process);
+  await writeProcessCharacter(process.PID, process.name, process.description);
 }
 
 const animateProcessReady = async (element: Element | null) => {
@@ -228,7 +233,7 @@ const animateProcessReady = async (element: Element | null) => {
     element.classList.add("move-to-left");
     await delay(animationMoveToLeftDelay);
     element.classList.remove("move-to-left");
-    const processAux = { ...processList.value.shift() };
+    let processAux = { ...processList.value.shift() };
     processReadyToExecute.value = processAux;
     await delay(100);
     const processToMoveFromCurrentToDown = document.querySelector(
@@ -253,6 +258,28 @@ const animateProcessReady = async (element: Element | null) => {
     }
     currentProcessExecution.value = processAux;
     await delay(100);
+
+    //TODO: 🕗 EN EJECUCION
+    while (quantumCounter.value < props.quantum) {
+      await delay(500);
+      quantumCounter.value++;
+      processAux.quantum++;
+      timeCount.value++;
+      let processToSlice = { ...processAux };
+      processToSlice.description = processToSlice.description.slice(
+        0,
+        processToSlice.quantum
+      );
+
+      await writeCharacterToFile(processToSlice);
+
+      await delay(500);
+
+      if (processToSlice.description.length >= processAux.description.length) {
+        processHasEnded.value = true;
+      }
+    }
+
     const processToMoveFromCurrentToRight =
       document.querySelector(".current-process");
     if (processToMoveFromCurrentToRight) {
@@ -273,30 +300,51 @@ const animateProcessReady = async (element: Element | null) => {
     processFinished.value = processAux;
 
     await delay(100);
-    const processFinishing = document.querySelector(".process-finished");
-    if (processFinishing && finishedProcesses.value.length < 6) {
-      processFinishing.classList.add("move-to-finish");
 
-      if (finishedProcesses.value.length > 0) {
-        await delay(100);
-        const processTerminated = document.querySelector(
-          ".processes-finished-animate"
-        );
-        if (processTerminated) {
-          processTerminated.classList.add("move-to-left");
-          await delay(900);
-          processTerminated.classList.remove("move-to-left");
+    if (processHasEnded.value) {
+      const processFinishing = document.querySelector(".process-finished");
+      if (processFinishing && finishedProcesses.value.length < 6) {
+        processFinishing.classList.add("move-to-finish");
+
+        if (finishedProcesses.value.length > 0) {
+          await delay(100);
+          const processTerminated = document.querySelector(
+            ".processes-finished-animate"
+          );
+          if (processTerminated) {
+            processTerminated.classList.add("move-to-left");
+            await delay(900);
+            processTerminated.classList.remove("move-to-left");
+          }
+        } else {
+          await delay(700);
         }
-      } else {
-        await delay(700);
+
+        processFinishing.classList.remove("move-to-finish");
       }
-
-      processFinishing.classList.remove("move-to-finish");
+      finishedProcesses.value.push(processAux);
+    } else {
+      processList.value.push(processAux);
     }
-    finishedProcesses.value.push(processAux);
+    updateProcess(processAux);
 
+    quantumCounter.value = 0;
+    processHasEnded.value = false;
     processFinished.value = null;
   }
+};
+
+const updateProcess = (process: any) => {
+  const times = process.timesExecuted + 1;
+  processList.value = processList.value.map((p) => {
+    if (p.PID === process.PID) {
+      return {
+        ...p,
+        timesExecuted: times,
+      };
+    }
+    return p;
+  });
 };
 
 const delay = (ms: number) => {
@@ -528,5 +576,13 @@ h3 {
   font-size: 1.5em;
   color: rgba(0, 0, 0, 0.144);
   text-align: start;
+}
+.quantum-counter {
+  position: absolute;
+  top: 110px;
+  left: 232px;
+  padding: 5px;
+  border-radius: 10px;
+  border: 2px dashed gray;
 }
 </style>

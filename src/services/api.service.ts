@@ -33,11 +33,19 @@ export async function writeProcessCharacter(
   description: string
 ): Promise<any> {
   try {
-    const response = await axios.post(`${baseUrl}/createTxtFile`, {
-      PID,
-      name,
-      description,
-    });
+    const response = await axios.post(
+      `${baseUrl}/createTxtFile`,
+      {
+        PID,
+        name,
+        description,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Error al obtener los catálogos:", error);
