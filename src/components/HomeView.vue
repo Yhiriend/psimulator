@@ -1,17 +1,27 @@
 <!-- eslint-disable prettier/prettier -->
 <template>
   <h1>Simulador de procesos (RR)</h1>
-  <section style="display: flex; padding: 10px 50px;">
+  <section style="display: flex; padding: 10px 50px">
     <div class="form-wrapper">
       <div class="row">
         <div class="group-input">
           <label for="quantumInput">QUANTUM</label>
-          <input id="quantumInput" placeholder="Cantidad de quantum" type="number" v-model="quantumInput" />
+          <input
+            id="quantumInput"
+            placeholder="Cantidad de quantum"
+            type="number"
+            v-model="quantumInput"
+          />
         </div>
         <div style="width: 20px"></div>
         <div class="group-input">
           <label for="thInput">TH</label>
-          <input id="thInput" placeholder="Tiempo del hilo (ms)" type="number" v-model="thInput" />
+          <input
+            id="thInput"
+            placeholder="Tiempo del hilo (ms)"
+            type="number"
+            v-model="thInput"
+          />
         </div>
       </div>
 
@@ -19,38 +29,39 @@
         <label for="catalogInput">Catalog</label>
         <select id="catalogInput" v-model="selectorRef">
           <option value="" disabled selected>Escoge un catalogo</option>
-          <template v-for="(option, index) in catalogSelectorOptions" :key="index">
+          <template
+            v-for="(option, index) in catalogSelectorOptions"
+            :key="index"
+          >
             <option :value="option.id">{{ option.name }}</option>
           </template>
         </select>
       </div>
-
     </div>
 
     <ChartComponent v-model="chartProcesses" class="chart" />
-
   </section>
-  <div class="simulator-wrapper" style="padding-bottom: 20px;">
-    <SimulatorComponent v-model="simulationModel" :processes="processes" :quantum="quantumInput"
-      :is-started="isStarted" />
+  <div class="simulator-wrapper" style="padding-bottom: 20px">
+    <SimulatorComponent
+      :processes="processes ?? []"
+      :quantum="quantumInput ?? 1"
+      :th="thInput ?? 1"
+    />
   </div>
-
 </template>
 <!-- eslint-disable prettier/prettier -->
 <script setup lang="ts">
 import SimulatorComponent from "./SimulatorComponent.vue";
-import { PROCESSES as CATALOGUES } from "@/assets/processes";
 import { getRandomColor } from "@/utils/utils";
 import { onMounted, ref, watch, defineModel } from "vue";
 import ChartComponent from "./ChartComponent.vue";
+import { fetchCatalogues } from "@/services/api.service";
 
 const catalogSelectorOptions: any = ref([]);
 const selectorRef = ref();
-const processes = ref();
-const quantumInput = ref();
-const thInput = ref();
-const isStarted = ref(false);
-const simulationModel: any = defineModel();
+const processes = ref<any[]>();
+const quantumInput = ref<number>(1);
+const thInput = ref<number>(1);
 const colors = ref([]);
 const chartProcesses = ref();
 
@@ -58,20 +69,13 @@ const getBurstTime = (word: string, threadTime: number) => {
   //if (word.includes(" ")) {
   //  return word.split(" ").join("").length * threadTime;
   //}
-  return (word.length * threadTime);
-}
+  return word.length * threadTime;
+};
 
 const getProcesses = () => {
-  return catalogSelectorOptions.value.find((c: any) => c.id === selectorRef.value).processes;
-}
-
-onMounted(() => {
-  catalogSelectorOptions.value = CATALOGUES;
-});
-
-watch(selectorRef, (newValue) => {
-  catalogSelectorOptions.value = CATALOGUES.map((c: any) => {
-    const processesMap = c.processes.map((p: any, index: number) => {
+  return catalogSelectorOptions.value
+    .find((c: any) => c.id === selectorRef.value)
+    .processes.map((p: any, index: number) => {
       return {
         ...p,
         tr: getBurstTime(p.description, thInput.value ?? 1),
@@ -79,14 +83,22 @@ watch(selectorRef, (newValue) => {
         timeArrive: index,
         currentTime: 0,
         tf: getBurstTime(p.description, thInput.value ?? 1),
-        color: getRandomColor(colors.value)
-      }
+        color: getRandomColor(colors.value),
+      };
     });
-    c.processes = processesMap;
-    return c;
-  });
-  simulationModel.value = { processReady: getProcesses(), processExecuted: [], processEnded: [] };
-  chartProcesses.value = getProcesses();
+};
+
+const getCatalogues = async () => {
+  return await fetchCatalogues();
+};
+
+onMounted(async () => {
+  catalogSelectorOptions.value = await getCatalogues();
+});
+
+watch(selectorRef, (_) => {
+  processes.value = getProcesses();
+  console.log("processes selected", processes.value);
 });
 </script>
 

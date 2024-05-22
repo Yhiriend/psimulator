@@ -1,374 +1,400 @@
-<!-- eslint-disable prettier/prettier -->
 <template>
-    <div style="margin: 20px 0 0 0">
-        <button @click="startSimulation" :disabled="simulationRunning"><i class="bi bi-play-fill"></i></button>
-        <button @click="pauseSimulation" :disabled="!simulationRunning">
-            <i class="bi bi-pause-circle-fill"></i>
-        </button>
-        <button @click="stopSimulation"><i class="bi bi-stop-circle-fill"></i></button>
-        <p style="color: black;">Tiempo: {{ processReady[processReady.length - 1]?.tf ??
-            processEnded[processEnded.length - 1]?.tf }}</p>
-    </div>
-    <div class="wrapper">
-      <h3>Listo</h3>
-        <div style="width: 95%; display: flex; justify-content: start">
-          <div class="first-processes-wrapper">
-            <ProcessCardComponent v-if="firstProcessReady" :process="firstProcessReady" process-id="first-process-ready"></ProcessCardComponent>
-
+  <div>
+    <button @click="startSimulation">Iniciar Simulación</button>
+    <button @click="pauseSimulation">Pausar Simulación</button>
+    <button @click="resumeSimulation">Reanudar Simulación</button>
+    <!-- Lista de procesos -->
+    <section class="simulator-wrapper">
+      <section class="process-ready-wrapper">
+        <div><h3>Listo</h3></div>
+        <section class="processes-ready">
+          <div class="process-empty">
+            <ProcessCardComponent
+              id="process-ready-to-execute"
+              :process="processReadyToExecute"
+              v-if="processReadyToExecute"
+            ></ProcessCardComponent>
           </div>
-
-            <div class="processes-wrapper">
-                <template v-for="(process, index) in processReady ?? []" :key="index">
-                    <ProcessCardComponent :process="process"></ProcessCardComponent>
-                </template>
+          <div class="processes-wrapper">
+            <template v-for="(process, index) in processList" :key="index">
+              <ProcessCardComponent
+                :process="process"
+                :process-id="index.toString()"
+              ></ProcessCardComponent>
+            </template>
+          </div>
+        </section>
+      </section>
+      <section
+        class="execution-wrapper"
+        style="display: flex; align-items: center; width: 100%"
+      >
+        <section class="process-execution-wrapper">
+          <div>
+            <h3 style="text-align: start; padding-left: 40px">En ejecucion</h3>
+          </div>
+          <div class="process-executing">
+            <div class="animation-execution-wrapper">
+              <ProcessCardComponent
+                v-if="currentProcessExecutionAnimate"
+                id="current-process-executing"
+                :process="currentProcessExecutionAnimate"
+              ></ProcessCardComponent>
             </div>
-        </div>
-        <div style="width: 20px"></div>
-        <div>
-            <h3>En ejecucion</h3>
-            <div class="processes-wrapper" v-if="hasInitSimulation">
-                <ProcessCardComponent :process="procesoEnEjecucion"></ProcessCardComponent>
-            </div>
-        </div>
-        <div style="width: 20px"></div>
-        <div style="width: 95%;">
-            <h3>Terminado</h3>
-            <div class="processes-wrapper" v-if="hasInitSimulation || !hasEndedSimulation">
-                <template v-for="(process, index) in processEnded ?? []" :key="index">
-                    <div class="process" :style="{ background: process.color ?? '#3D8CC7' }" id="ended">
-                        <p style="font-size: large; font-weight: bold;">{{ process.name }}</p>
-                        <p class="pid"><span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}</p>
-                        <p class="timearrive"><span style="color: black; opacity: 0.5">T.L.</span> {{
-                            process.timeArrive ?? 0 }}</p>
-                        <p class="timeended"><span style="color: black; opacity: 0.5">T.F.</span> {{
-                            process.currentTime }}</p>
-                        <p class="timesexe"><span style="color: black; opacity: 0.5">Ejecuciones</span> {{
-                            process.timesExecuted ?? 0 }}</p>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </div>
-    <audio ref="audio" id="miAudio">
-        <source src="../assets/sounds/sound01.mp3">
-    </audio>
-
+            <ProcessCardComponent
+              class="current-process"
+              v-if="currentProcessExecution"
+              :process="currentProcessExecution"
+            ></ProcessCardComponent>
+          </div>
+        </section>
+        <section class="process-carriage-wrapper">
+          <div><h3 style="color: white">carriage</h3></div>
+          <section class="process-carriage">
+            <ProcessCardComponent
+              class="process-carriaging"
+              v-if="processCarriage"
+              :process="processCarriage"
+            ></ProcessCardComponent>
+          </section>
+        </section>
+      </section>
+      <section class="process-ready-wrapper">
+        <div><h3>Terminado</h3></div>
+        <section class="processes-ready"></section>
+      </section>
+    </section>
+  </div>
 </template>
-<!-- eslint-disable prettier/prettier -->
+
 <script setup lang="ts">
-import { defineProps, onMounted, onUnmounted, onUpdated, watch, ref, computed } from 'vue';
-import Process from '../models/process.model';
-import ProcessCardComponent from "@/components/ProcessCardComponent.vue";
-const props = defineProps<{ modelValue: any; processes: Process[]; quantum: number; }>()
-const processReady = ref<Process[]>([]);
-const processExecuted = ref<Process[]>([]);
-const processEnded = ref<Process[]>([]);
-const simulationRunning = ref(false);
-const hasInitSimulation = ref(false);
-const hasEndedSimulation = ref(false);
-const procesoEnEjecucion = ref();
-const firstProcessReady = ref<Process>();
-const tiempoActual = ref(0);
-const cicleTimeSimulation = 1000;
-const miAudio = ref();
-const indexProcessReady = ref(0);
-watch(props, (newValue) => {
-    if (!simulationRunning.value) {
-        //const copi = JSON.stringify(newValue.modelValue?.processReady || []);
-        const copi = newValue.modelValue?.processReady || [];
-        processReady.value = copi.slice(1, copi.length)
-        firstProcessReady.value = copi[0];
-    }
-});
+import { ref, defineProps, onMounted, watch } from "vue";
+import ProcessCardComponent from "./ProcessCardComponent.vue";
 
-const pauseSimulation = () => {
-    if (simulationRunning.value) {
-        simulationRunning.value = false;
-    }
-}
+const animationMoveToLeftDelay = 900;
 
-const startSimulation = async () => {
-    hasInitSimulation.value = true;
-    simulationRunning.value = true;
-    simulateRR(processReady.value, processExecuted.value, processEnded.value, props.quantum);
-}
+const props = defineProps<{ quantum: number; th: number; processes: any[] }>();
+const processList = ref<any[]>([]);
+const finishedProcesses = ref<any[]>([]);
+let currentProcessExecution = ref();
+const currentProcessExecutionAnimate = ref();
+let running = false;
+const processReadyToExecute = ref();
+const processCarriage = ref();
 
 onMounted(() => {
-    miAudio.value = document.getElementById("miAudio") as HTMLAudioElement;
+  processList.value = [...props.processes];
+});
 
-})
+watch(props, (_) => {
+  processList.value = [...props.processes];
+});
 
-const simulateRR = async (listo: Process[], ejecucion: Process[], terminado: Process[], quantum: number) => {
-    //const result: RRResult = { ejecucion: [], terminado: [] };
+// Función para iniciar la simulación
+const startSimulation = async () => {
+  //processList = [...props.processes];
+  //simulateRoundRobin(processList.value, props.quantum, props.th);
+  const element = document.querySelector(".processes-wrapper");
+  animateProcessReady(element);
+};
 
-    let totalQuantums = 0;
-    while (listo.length > 0 || ejecucion.length > 0) {
+// Función para pausar la simulación
+const pauseSimulation = () => {
+  running = false;
+};
 
-        if (!simulationRunning.value) {
-            break;
-        }
+// Función para reanudar la simulación
+const resumeSimulation = () => {
+  if (!running) {
+    simulateRoundRobin(processList.value, props.quantum, props.th);
+  }
+};
 
-        if (ejecucion.length === 0 && listo.length > 0) {
-          await delay(cicleTimeSimulation);
+async function simulateRoundRobin(
+  processes: any[],
+  quantum: number,
+  th: number
+) {
+  // Set running to true to indicate the simulation is active
+  running = true;
 
-          if (firstProcessReady.value?.timeArrive === 0) {
-            await startAnimationSlideDownRec();
+  // Initialize the start time
+  const startTime = Date.now();
 
-          }
-            // await delay(700);
-            // await startAnimationFirstProcessReady();
-            // miAudio.value.play();
-          if (!procesoEnEjecucion.value){
-            procesoEnEjecucion.value = firstProcessReady.value!
-            firstProcessReady.value = undefined;
-          }
+  // Helper function to create a delay
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
-          firstProcessReady.value = listo.shift();
-        }
+  // Main simulation loop
+  while (processList.value.length > 0 && running) {
+    for (let i = 0; i < processes.length; i++) {
+      if (!running) break; // Check if the simulation is paused
 
-        //const procesoActual = ejecucion[0];
-        //let tiempoRestante = procesoActual.tr! - quantum;
+      let process = processList.value[i];
+      currentProcessExecution = process;
+      process.state = "En ejecucion";
 
-        //procesoEnEjecucion.value = procesoActual;
+      // Calculate execution time per quantum
+      const executionTime = Math.min(quantum, process.tr);
+      const charsToWrite = Math.floor(executionTime / th);
 
-      // procesoActual.timesExecuted! += 1;
-      // totalQuantums += quantum;
-      // if (tiempoRestante > 0) {
-      //   procesoActual.tr = tiempoRestante;
-      //   await delay(cicleTimeSimulation);
-      //   // startAnimationSlideUp();
-      //   // await delay(500);
-      //   listo.push(procesoActual);
-      //   ejecucion.shift();
-      //   // miAudio.value.play();
-      // } else {
-      //   if (tiempoRestante < 0) {
-      //     totalQuantums = totalQuantums + tiempoRestante;
-      //   }
-      //   procesoActual.timesExecuted = procesoActual.timesExecuted!++;
-      //   await delay(cicleTimeSimulation);
-      //   // startAnimationSlideDown();
-      //   // await delay(500);
-      //   procesoActual.currentTime! = totalQuantums;
-      //   terminado.push(procesoActual);
-      //   ejecucion.shift();
-      //   // miAudio.value.play();
-      // }
-      //
-      // if (terminado.includes(procesoActual) || listo.includes(procesoActual)) {
-      //
-      //   procesoEnEjecucion.value = null;
-      // }
+      // Simulate process execution
+      for (let j = 0; j < charsToWrite; j++) {
+        if (!running) break; // Check if the simulation is paused
+        await writeCharacterToFile(process);
+        await delay(th);
+      }
 
-        console.log('Simulando...');
-        tiempoActual.value += 1;
+      // Update remaining execution time
+      process.tr -= executionTime;
+
+      if (process.tr <= 0) {
+        // Process has completed its activity
+        process.state = "Finalizado";
+        finishedProcesses.value.push(process);
+        processes.splice(i, 1);
+        i--; // Adjust the index after removal
+      } else {
+        // Process is preemptive and goes back to the ready state
+        process.state = "Listo";
+      }
+
+      // Calculate and update times for process
+      process.executionCount = process.executionCount || 0;
+      process.executionCount++;
+      process.finishTime = quantum * process.executionCount;
     }
+  }
 
-    procesoEnEjecucion.value = null;
-    simulationRunning.value = false;
-
-    if (processReady.value.length === 0 && !procesoEnEjecucion.value) {
-        hasEndedSimulation.value = false;
-        hasInitSimulation.value = false;
-    }
-    console.log("Simulacion finalizada");
-    //return null;
+  // Mark simulation as completed
+  //currentProcessExecution = null;
+  running = false;
 }
 
-const startAnimationSlideDown = () => {
-    const firstProcess = document.getElementById('execution');
-    if (firstProcess) {
-        firstProcess.classList.add('slide-down-animation');
+// Helper function to write a character to the file
+async function writeCharacterToFile(process: any) {
+  // Call your service method to write a character to the file
+  // Here we assume the method is `writeProcessCharacter` and it accepts the process
+  console.log("process", process);
+  //await writeProcessCharacter(process);
+}
+
+const animateProcessReady = async (element: Element | null) => {
+  if (element) {
+    element.classList.add("move-to-left");
+    await delay(animationMoveToLeftDelay);
+    element.classList.remove("move-to-left");
+    const processAux = { ...processList.value.shift() };
+    processReadyToExecute.value = processAux;
+    await delay(100);
+    const processToMoveFromCurrentToDown = document.querySelector(
+      "#process-ready-to-execute"
+    );
+    if (processToMoveFromCurrentToDown) {
+      processToMoveFromCurrentToDown.classList.add("move-to-execution");
+      await delay(200);
     }
-}
-
-const startAnimationFirstProcessReady = async () => {
-    const firstProcess = document.getElementById('first-process-ready');
-    if (firstProcess) {
-        firstProcess.classList.toggle('slide-from-right-to-left');
-        await delay(600);
-      firstProcess.classList.toggle('slide-from-right-to-left');
+    currentProcessExecutionAnimate.value = processAux;
+    await delay(100);
+    processToMoveFromCurrentToDown?.classList.remove("move-to-execution");
+    processReadyToExecute.value = null;
+    const processToMoveFromUpToCurrent = document.querySelector(
+      "#current-process-executing"
+    );
+    if (processToMoveFromUpToCurrent) {
+      processToMoveFromUpToCurrent.classList.add("move-in-execution");
+      await delay(animationMoveToLeftDelay);
+      processToMoveFromUpToCurrent.classList.remove("move-in-execution");
+      currentProcessExecutionAnimate.value = null;
     }
-}
-
-const startAnimationSlideUp = () => {
-    const firstProcess = document.getElementById('execution');
-    if (firstProcess) {
-        firstProcess.classList.add('slide-up-animation');
+    currentProcessExecution.value = processAux;
+    await delay(100);
+    const processToMoveFromCurrentToRight =
+      document.querySelector(".current-process");
+    if (processToMoveFromCurrentToRight) {
+      processToMoveFromCurrentToRight.classList.add("move-to-right");
+      await delay(200);
+      processToMoveFromCurrentToRight.classList.remove("move-to-right");
+      currentProcessExecution.value = null;
     }
-}
-
-const startAnimationSlideDownRec = async () => {
-    const firstProcess = document.getElementById('first-process-ready');
-    await delay(500);
-    if (firstProcess) {
-        firstProcess.classList.add('slide-down-rec-animation');
-        //indexProcessReady.value += 1;
-        await delay(700);
+    processCarriage.value = processAux;
+    await delay(100);
+    const processCarriaging = document.querySelector(".process-carriaging");
+    if (processCarriaging) {
+      processCarriaging.classList.add("move-to-end");
+      await delay(animationMoveToLeftDelay);
+      processCarriaging.classList.remove("move-to-end");
+      currentProcessExecution.value = null;
     }
-}
-
-
-const stopSimulation = () => {
-    simulationRunning.value = false;
-    processEnded.value = [];
-    processExecuted.value = [];
-    procesoEnEjecucion.value = null;
-    const copi = JSON.stringify(props.modelValue?.processReady || []);
-    processReady.value = JSON.parse(copi);
-    console.log("processes :", processReady.value);
-    hasInitSimulation.value = false;
-    hasEndedSimulation.value = true;
-    tiempoActual.value = 0;
-}
+  }
+};
 
 const delay = (ms: number) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
 </script>
-<!-- eslint-disable prettier/prettier -->
+
 <style scoped>
-/*#ended {
-    background: #2CBE6E;
+.move-to-end {
+  animation-name: moveToEnd;
+  animation-duration: 2s;
+}
+.move-to-right {
+  animation-name: moveToRight;
+  animation-duration: 1s;
+}
+.move-in-execution {
+  animation-name: moveInExecution;
+  animation-duration: 1s;
+}
+.move-to-execution {
+  animation-name: moveToExecution;
+  animation-duration: 1s;
+}
+.move-to-left {
+  animation-name: moveToLeft;
+  animation-duration: 1s;
 }
 
-#execution {
-    background: #ECBE08;
-}
-
-#ready {
-    background: #3D8CC7;
-}*/
-
-.slide-down-animation {
-    animation-name: slideDown;
-    animation-duration: 0.6s;
-}
-
-@keyframes slideDown {
-    from {
-        transform: translateX(0) translateY(0);
-    }
-
-    to {
-        transform: translateX(200px) translateY(100px);
-    }
-}
-
-.slide-from-right-to-left {
-  animation-name: slideRightToLeft;
-  animation-duration: 0.6s;
-}
-
-@keyframes slideRightToLeft {
-  from {
-    transform: translateX(200px);
-  }
-
-  to {
+@keyframes moveToEnd {
+  0% {
     transform: translateX(0);
   }
+  50% {
+    transform: translateX(500px);
+  }
+  100% {
+    transform: translateX(500px);
+  }
 }
 
-.slide-up-animation {
-    animation-name: slideUp;
-    animation-duration: 0.7s;
+@keyframes moveToLeft {
+  0% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateX(-160px);
+  }
+  100% {
+    transform: translateX(-160px);
+  }
 }
 
-
-@keyframes slideUp {
-    from {
-        transform: translateX(0) translateY(0);
-    }
-
-    to {
-        transform: translateX(200px) translateY(-100px);
-    }
+@keyframes moveToRight {
+  0% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateX(200px);
+  }
+  100% {
+    transform: translateX(200px);
+  }
 }
 
-.slide-down-rec-animation {
-    animation-name: slideDownRec;
-    animation-duration: 0.7s;
+@keyframes moveToExecution {
+  0% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateY(160px);
+  }
+  100% {
+    transform: translateY(160px);
+  }
 }
 
-@keyframes slideDownRec {
-    from {
-        transform: translateX(0);
-    }
-
-    to {
-        transform: translateY(210px);
-    }
+@keyframes moveInExecution {
+  0% {
+    transform: translateY(0);
+  }
+  60% {
+    transform: translateY(150px);
+  }
+  100% {
+    transform: translateY(150px);
+  }
 }
 
-h3 {
-    text-align: start
+.simulator-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  width: 1000px;
+  height: fit-content;
+  background: white;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068);
 }
-
-.wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: start;
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    margin: 10px 30px 30px 30px;
-    box-shadow: 10px 10px 20px 1px rgba(0, 0, 0, 0.11);
+.process-empty {
+  display: flex;
+  justify-content: end;
+  width: 200px;
+  min-width: 200px;
+  height: 128px;
+  max-height: 128px;
+  box-sizing: border-box;
 }
-
-.first-processes-wrapper{
+.processes-wrapper {
+  display: flex;
+}
+.processes-ready {
   position: relative;
   display: flex;
-  border: 1px solid rgb(233, 233, 233);
+  padding: 10px;
+  width: 90%;
+  height: fit-content;
+  background: rgb(235, 235, 235);
   border-radius: 15px;
-  padding: 8px 14px;
-  height: 140px;
-  width: 130px;
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
+  margin-right: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
-
-.processes-wrapper {
-    position: relative;
-    display: flex;
-    border: 1px solid rgb(233, 233, 233);
-    border-radius: 15px;
-    padding: 8px 14px;
-    height: 140px;
-    width: fit-content;
-    min-width: 20%;
-    max-width: 80%;
-    overflow-x: auto;
+.process-executing {
+  position: relative;
+  overflow: hidden;
+  width: 200px;
+  height: 170px;
+  background: rgb(235, 235, 235);
+  border-radius: 15px;
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
+  margin-right: 100px;
+  margin-left: 20px;
 }
-
-.process {
-    border: 1px solid rgb(48, 48, 48);
-    border-radius: 15px;
-    margin-right: 10px;
-    padding: 8px 14px;
-    transition: opacity 0.3s ease-in-out;
-    width: 100px;
-    min-width: 100px;
-    min-height: 120px;
-    height: 120px;
+.process-carriage-wrapper {
+  width: 100%;
 }
-
-#execution {
-    position: absolute;
-    width: 100px;
-    min-width: 100px;
-    min-height: 120px;
-    height: 120px;
+.process-carriage {
+  position: relative;
+  width: 100%;
+  min-width: 100%;
+  overflow: hidden;
+  height: 100px;
+  background: rgba(0, 0, 0, 0.384);
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
+  border-radius: 15px;
+  margin-right: 20px;
 }
-
-p {
-    margin: 5px 0;
-    color: rgb(41, 41, 41);
+.animation-execution-wrapper {
+  position: absolute;
+  top: -127px;
+  left: 30px;
+  width: 150px;
+  height: 128px;
 }
-
-.pid,
-.timesexe,
-.timeended {
-    font-size: 0.8em;
+.current-process {
+  position: absolute;
+  top: 23px;
+  left: 30px;
+}
+.process-carriaging {
+  position: absolute;
+  top: -20px;
+  left: -150px;
+  filter: blur(2px);
+  opacity: 0.5;
 }
 </style>
