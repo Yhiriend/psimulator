@@ -15,7 +15,7 @@
         </div>
         <div style="width: 20px"></div>
         <div class="group-input">
-          <label for="thInput">TH</label>
+          <label for="thInput">TH (ms)</label>
           <input
             id="thInput"
             placeholder="Tiempo del hilo (ms)"
@@ -82,7 +82,7 @@ const getProcesses = () => {
         timesExecuted: 0,
         timeArrive: index,
         currentTime: 0,
-        tf: getBurstTime(p.description, thInput.value ?? 1),
+        tf: 0,
         color: getRandomColor(colors.value),
         quantum: 0,
       };

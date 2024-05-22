@@ -3,7 +3,7 @@
     <button @click="startSimulation">Iniciar Simulación</button>
     <button @click="pauseSimulation">Pausar Simulación</button>
     <button @click="resumeSimulation">Reanudar Simulación</button>
-    <p style="font-size: 20; font-weight: bold">Time: {{ timeCount }}</p>
+    <p style="font-size: 1em; font-weight: bold">Time: {{ timeCount }}</p>
     <!-- Lista de procesos -->
     <section class="simulator-wrapper">
       <section class="process-ready-wrapper">
@@ -11,6 +11,7 @@
         <section class="processes-ready">
           <div class="process-empty">
             <ProcessCardComponent
+                :class="{'animation-pause': !running}"
               id="process-ready-to-execute"
               :process="processReadyToExecute"
               v-if="processReadyToExecute"
@@ -101,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, onMounted, watch } from "vue";
+import {ref, defineProps, onMounted, watch, computed} from "vue";
 import ProcessCardComponent from "./ProcessCardComponent.vue";
 import { writeProcessCharacter } from "@/services/api.service";
 
@@ -112,13 +113,17 @@ const processList = ref<any[]>([]);
 const finishedProcesses = ref<any[]>([]);
 let currentProcessExecution = ref();
 const currentProcessExecutionAnimate = ref();
-let running = false;
+const running = ref(false);
 const processReadyToExecute = ref();
 const processCarriage = ref();
 const processFinished = ref();
 const timeCount = ref(0);
 const quantumCounter = ref(0);
+const totalQuantum = ref(0);
 const processHasEnded = ref(false);
+let simulationInterval: number | null = null;
+const simulationHasEnded = ref(false);
+const interval = ref(2500);
 
 onMounted(() => {
   processList.value = [...props.processes];
@@ -128,95 +133,47 @@ watch(props, (_) => {
   processList.value = [...props.processes];
 });
 
-// Función para iniciar la simulación
-const startSimulation = async () => {
-  //processList = [...props.processes];
-  //simulateRoundRobin(processList.value, props.quantum, props.th);
-  const element = document.querySelector(".processes-wrapper");
-  animateProcessReady(element);
+const startSimulation = () => {
+  running.value = true;
+  simulationInterval = setInterval(simulationStep, interval.value);
 };
 
-// Función para pausar la simulación
 const pauseSimulation = () => {
-  running = false;
+  running.value = false;
+  if (simulationInterval) {
+    clearInterval(simulationInterval);
+    simulationInterval = null;
+  }
 };
 
-// Función para reanudar la simulación
 const resumeSimulation = () => {
-  if (!running) {
-    simulateRoundRobin(processList.value, props.quantum, props.th);
+  if (!running.value) {
+    running.value = true;
+    simulationInterval = setInterval(simulationStep, interval.value);
   }
 };
 
-async function simulateRoundRobin(
-  processes: any[],
-  quantum: number,
-  th: number
-) {
-  // Set running to true to indicate the simulation is active
-  running = true;
-
-  // Initialize the start time
-  const startTime = Date.now();
-
-  // Helper function to create a delay
-  const delay = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
-
-  // Main simulation loop
-  while (processList.value.length > 0 && running) {
-    for (let i = 0; i < processes.length; i++) {
-      if (!running) break; // Check if the simulation is paused
-
-      let process = processList.value[i];
-      currentProcessExecution = process;
-      process.state = "En ejecucion";
-
-      // Calculate execution time per quantum
-      const executionTime = Math.min(quantum, process.tr);
-      const charsToWrite = Math.floor(executionTime / th);
-
-      // Simulate process execution
-      for (let j = 0; j < charsToWrite; j++) {
-        if (!running) break; // Check if the simulation is paused
-        await writeCharacterToFile(process);
-        await delay(th);
-      }
-
-      // Update remaining execution time
-      process.tr -= executionTime;
-
-      if (process.tr <= 0) {
-        // Process has completed its activity
-        process.state = "Finalizado";
-        finishedProcesses.value.push(process);
-        processes.splice(i, 1);
-        i--; // Adjust the index after removal
-      } else {
-        // Process is preemptive and goes back to the ready state
-        process.state = "Listo";
-      }
-
-      // Calculate and update times for process
-      process.executionCount = process.executionCount || 0;
-      process.executionCount++;
-      process.finishTime = quantum * process.executionCount;
-    }
+const simulationStep = () => {
+  if (!running.value) {
+    return;
   }
+  animateProcessReady();
+};
 
-  // Mark simulation as completed
-  //currentProcessExecution = null;
-  running = false;
-}
 
 async function writeCharacterToFile(process: any) {
   await writeProcessCharacter(process.PID, process.name, process.description);
 }
 
-const animateProcessReady = async (element: Element | null) => {
+const animateProcessReady = async () => {
+  const element = document.querySelector(".processes-wrapper");
   if (element) {
-    if (finishedProcesses.value.length === 6) {
+    if (finishedProcesses.value.length > 5) {
       styleFinish.value = "start";
+    }
+
+    if (!running.value){
+      return;
     }
 
     const processesFinishedElement = document.querySelector(
@@ -230,9 +187,18 @@ const animateProcessReady = async (element: Element | null) => {
       });
     }
 
+    if (!running.value){
+      return;
+    }
+
     element.classList.add("move-to-left");
     await delay(animationMoveToLeftDelay);
     element.classList.remove("move-to-left");
+
+    if (!running.value){
+      return;
+    }
+
     let processAux = { ...processList.value.shift() };
     processReadyToExecute.value = processAux;
     await delay(100);
@@ -259,9 +225,9 @@ const animateProcessReady = async (element: Element | null) => {
     currentProcessExecution.value = processAux;
     await delay(100);
 
-    //TODO: 🕗 EN EJECUCION
+    //TODO: 🕗 EN EJECUCION ------------------------>
     while (quantumCounter.value < props.quantum) {
-      await delay(500);
+      await delay(props.th/2);
       quantumCounter.value++;
       processAux.quantum++;
       timeCount.value++;
@@ -273,12 +239,14 @@ const animateProcessReady = async (element: Element | null) => {
 
       await writeCharacterToFile(processToSlice);
 
-      await delay(500);
+      await delay(props.th/2);
 
       if (processToSlice.description.length >= processAux.description.length) {
         processHasEnded.value = true;
+        break;
       }
     }
+    totalQuantum.value += props.quantum;
 
     const processToMoveFromCurrentToRight =
       document.querySelector(".current-process");
@@ -300,6 +268,7 @@ const animateProcessReady = async (element: Element | null) => {
     processFinished.value = processAux;
 
     await delay(100);
+    quantumCounter.value = 0;
 
     if (processHasEnded.value) {
       const processFinishing = document.querySelector(".process-finished");
@@ -323,28 +292,36 @@ const animateProcessReady = async (element: Element | null) => {
         processFinishing.classList.remove("move-to-finish");
       }
       finishedProcesses.value.push(processAux);
+      finishedProcesses.value = updateProcess(processAux, finishedProcesses.value);
+
     } else {
       processList.value.push(processAux);
+      processList.value = updateProcess(processAux, processList.value);
     }
-    updateProcess(processAux);
 
-    quantumCounter.value = 0;
     processHasEnded.value = false;
     processFinished.value = null;
+
+    if (processList.value.length <= 0){
+      running.value = false;
+      simulationHasEnded.value = true;
+    }
   }
 };
 
-const updateProcess = (process: any) => {
+const updateProcess = (process: any, list: any[]) => {
   const times = process.timesExecuted + 1;
-  processList.value = processList.value.map((p) => {
+  list = list.map((p) => {
     if (p.PID === process.PID) {
       return {
         ...p,
         timesExecuted: times,
+        tf: `${times * totalQuantum.value} (${(times * timeCount.value)})`,
       };
     }
     return p;
   });
+  return list;
 };
 
 const delay = (ms: number) => {
@@ -356,26 +333,36 @@ const delay = (ms: number) => {
 .move-to-finish {
   animation-name: moveToFinish;
   animation-duration: 1s;
+  animation-play-state: running;
 }
 .move-to-end {
   animation-name: moveToEnd;
   animation-duration: 1s;
+  animation-play-state: running;
 }
 .move-to-right {
   animation-name: moveToRight;
   animation-duration: 1s;
+  animation-play-state: running;
 }
 .move-in-execution {
   animation-name: moveInExecution;
   animation-duration: 1s;
+  animation-play-state: running;
 }
 .move-to-execution {
   animation-name: moveToExecution;
   animation-duration: 1s;
+  animation-play-state: running;
 }
 .move-to-left {
   animation-name: moveToLeft;
   animation-duration: 1s;
+  animation-play-state: running;
+}
+
+.animation-pause {
+  animation-play-state: paused;
 }
 
 @keyframes moveToFinish {

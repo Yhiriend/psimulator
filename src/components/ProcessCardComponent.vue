@@ -49,8 +49,9 @@ defineProps<{ process: Process; processId?: string }>();
 }
 
 p {
-  margin: 5px 0;
+  margin: 0 0 8px 0;
   color: rgb(41, 41, 41);
+  line-height: 0.8;
 }
 
 .pid,

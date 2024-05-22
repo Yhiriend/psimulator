@@ -9,19 +9,19 @@
 
 (DONE) - El proceso pasa de EJECUCION a LISTO si cumple que el proceso es expulsivo
 
-- La unidad de tiempo es dada en milisegundos
-- TH en milisegundos
+(DONE) - La unidad de tiempo es dada en milisegundos
+(DONE) - TH en milisegundos
 
 (DONE) - TR=TH\*(cantidad de caracteres en la descripcion)
 
 - La simulacion puede ser interrumpida y reanudada en cualquier momento
 - Cada proceso debe mantener su propio hilo de ejecucion
-  - El tiempo asumido en cada caracter copiado en el archivo corresponde a TH
+  (DONE) - El tiempo asumido en cada caracter copiado en el archivo corresponde a TH
     tiempo que determina cuanto debe esperar el hilo para nuevamente iniciar
     su actividad.
     (DONE) - El tiempo de llegada de cada proceso se determina asi:
     - Si listo es vacio: Tiempo de llegada <- 0
-    - sino: Tiempo de llegada <- process_index + 1
+    - sino: Tiempo de llegada <- process_index
 - El tiempo de finalizacion se calcula:
   - Tiempo de finalizacion <- Quantum \* #Ejecuciones
 
