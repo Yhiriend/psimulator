@@ -6,7 +6,7 @@
     <!-- Lista de procesos -->
     <section class="simulator-wrapper">
       <section class="process-ready-wrapper">
-        <div><h3>Listo</h3></div>
+        <div class="text-ready"><h3>Listo</h3></div>
         <section class="processes-ready">
           <div class="process-empty">
             <ProcessCardComponent
@@ -27,10 +27,15 @@
       </section>
       <section
         class="execution-wrapper"
-        style="display: flex; align-items: center; width: 100%"
+        style="
+          display: flex;
+          align-items: center;
+          width: 100%;
+          height: fit-content;
+        "
       >
         <section class="process-execution-wrapper">
-          <div>
+          <div class="text-execution" style="position: relative">
             <h3 style="text-align: start; padding-left: 40px">En ejecucion</h3>
           </div>
           <div class="process-executing">
@@ -59,9 +64,32 @@
           </section>
         </section>
       </section>
-      <section class="process-ready-wrapper">
-        <div><h3>Terminado</h3></div>
-        <section class="processes-ready"></section>
+      <section class="process-finished-wrapper" style="position: relative">
+        <div class="text-finished">
+          <h3>Terminado</h3>
+        </div>
+        <section
+          class="processes-finished"
+          :style="`justify-content: ${styleFinish}`"
+        >
+          <div class="process-finished">
+            <ProcessCardComponent
+              v-if="processFinished"
+              :process="processFinished"
+            ></ProcessCardComponent>
+          </div>
+          <div
+            class="processes-finished-animate"
+            style="display: flex; width: fit-content; height: fit-content"
+          >
+            <template
+              v-for="(process, index) in finishedProcesses"
+              :key="index"
+            >
+              <ProcessCardComponent :process="process"></ProcessCardComponent>
+            </template>
+          </div>
+        </section>
       </section>
     </section>
   </div>
@@ -72,7 +100,7 @@ import { ref, defineProps, onMounted, watch } from "vue";
 import ProcessCardComponent from "./ProcessCardComponent.vue";
 
 const animationMoveToLeftDelay = 900;
-
+const styleFinish = ref("end");
 const props = defineProps<{ quantum: number; th: number; processes: any[] }>();
 const processList = ref<any[]>([]);
 const finishedProcesses = ref<any[]>([]);
@@ -81,6 +109,7 @@ const currentProcessExecutionAnimate = ref();
 let running = false;
 const processReadyToExecute = ref();
 const processCarriage = ref();
+const processFinished = ref();
 
 onMounted(() => {
   processList.value = [...props.processes];
@@ -181,6 +210,21 @@ async function writeCharacterToFile(process: any) {
 
 const animateProcessReady = async (element: Element | null) => {
   if (element) {
+    if (finishedProcesses.value.length === 6) {
+      styleFinish.value = "start";
+    }
+
+    const processesFinishedElement = document.querySelector(
+      ".processes-finished"
+    );
+    await delay(100);
+    if (processesFinishedElement) {
+      processesFinishedElement.scrollTo({
+        left: 0,
+        behavior: "smooth",
+      });
+    }
+
     element.classList.add("move-to-left");
     await delay(animationMoveToLeftDelay);
     element.classList.remove("move-to-left");
@@ -226,6 +270,32 @@ const animateProcessReady = async (element: Element | null) => {
       processCarriaging.classList.remove("move-to-end");
       currentProcessExecution.value = null;
     }
+    processFinished.value = processAux;
+
+    await delay(100);
+    const processFinishing = document.querySelector(".process-finished");
+    if (processFinishing && finishedProcesses.value.length < 6) {
+      processFinishing.classList.add("move-to-finish");
+
+      if (finishedProcesses.value.length > 0) {
+        await delay(100);
+        const processTerminated = document.querySelector(
+          ".processes-finished-animate"
+        );
+        if (processTerminated) {
+          processTerminated.classList.add("move-to-left");
+          await delay(900);
+          processTerminated.classList.remove("move-to-left");
+        }
+      } else {
+        await delay(700);
+      }
+
+      processFinishing.classList.remove("move-to-finish");
+    }
+    finishedProcesses.value.push(processAux);
+
+    processFinished.value = null;
   }
 };
 
@@ -235,9 +305,13 @@ const delay = (ms: number) => {
 </script>
 
 <style scoped>
+.move-to-finish {
+  animation-name: moveToFinish;
+  animation-duration: 1s;
+}
 .move-to-end {
   animation-name: moveToEnd;
-  animation-duration: 2s;
+  animation-duration: 1s;
 }
 .move-to-right {
   animation-name: moveToRight;
@@ -256,15 +330,27 @@ const delay = (ms: number) => {
   animation-duration: 1s;
 }
 
+@keyframes moveToFinish {
+  0% {
+    transform: translateX(0);
+  }
+  80% {
+    transform: translateX(-172px);
+  }
+  100% {
+    transform: translateX(-172px);
+  }
+}
+
 @keyframes moveToEnd {
   0% {
     transform: translateX(0);
   }
-  50% {
-    transform: translateX(500px);
+  80% {
+    transform: translateX(900px);
   }
   100% {
-    transform: translateX(500px);
+    transform: translateX(900px);
   }
 }
 
@@ -340,18 +426,35 @@ const delay = (ms: number) => {
 .processes-wrapper {
   display: flex;
 }
+.process-ready-wrapper {
+  position: relative;
+}
 .processes-ready {
   position: relative;
   display: flex;
   padding: 10px;
   width: 90%;
-  height: fit-content;
+  height: 140px;
   background: rgb(235, 235, 235);
   border-radius: 15px;
   box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
   margin-right: 20px;
   overflow-x: auto;
   overflow-y: hidden;
+}
+.processes-finished {
+  position: relative;
+  padding: 10px;
+  width: 90%;
+  height: 140px;
+  background: rgb(235, 235, 235);
+  border-radius: 15px;
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
+  margin-right: 20px;
+  margin-top: 20px;
+  overflow-y: hidden;
+  display: flex;
+  overflow-x: scroll;
 }
 .process-executing {
   position: relative;
@@ -396,5 +499,34 @@ const delay = (ms: number) => {
   left: -150px;
   filter: blur(2px);
   opacity: 0.5;
+}
+.process-finished {
+  position: absolute;
+  top: 10px;
+  right: -160px;
+  z-index: 2;
+}
+.text-ready {
+  position: absolute;
+  top: 50px;
+  left: 60px;
+  z-index: 1;
+}
+.text-execution {
+  position: absolute;
+  top: 100px;
+  left: 10px;
+  z-index: 1;
+}
+.text-finished {
+  position: absolute;
+  top: 50px;
+  left: 30px;
+  z-index: 1;
+}
+h3 {
+  font-size: 1.5em;
+  color: rgba(0, 0, 0, 0.144);
+  text-align: start;
 }
 </style>
