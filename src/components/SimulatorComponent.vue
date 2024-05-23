@@ -1,8 +1,23 @@
 <template>
   <div>
-    <button @click="startSimulation">Iniciar Simulación</button>
-    <button @click="pauseSimulation">Pausar Simulación</button>
-    <button @click="resumeSimulation">Reanudar Simulación</button>
+    <button @click="startSimulation" :disabled="running">
+      <i
+        id="buttons"
+        :class="['bi bi-play-circle-fill', { desactive: running }]"
+      ></i>
+    </button>
+    <button @click="pauseSimulation" :disabled="!running">
+      <i
+        id="buttons"
+        :class="['bi bi-pause-circle-fill', { desactive: !running }]"
+      ></i>
+    </button>
+    <button @click="stopSimulation" :disabled="!running && !paused">
+      <i
+        id="buttons"
+        :class="['bi bi-stop-circle-fill', { desactive: !running && !paused }]"
+      ></i>
+    </button>
     <p style="font-size: 1em; font-weight: bold">Time: {{ timeCount }}</p>
     <!-- Lista de procesos -->
     <section class="simulator-wrapper">
@@ -11,13 +26,16 @@
         <section class="processes-ready">
           <div class="process-empty">
             <ProcessCardComponent
-                :class="{'animation-pause': !running}"
+              :class="{ 'animation-pause': !running }"
               id="process-ready-to-execute"
               :process="processReadyToExecute"
               v-if="processReadyToExecute"
             ></ProcessCardComponent>
           </div>
-          <div class="processes-wrapper">
+          <div
+            class="processes-wrapper"
+            :class="{ 'animation-pause': !running }"
+          >
             <template v-for="(process, index) in processList" :key="index">
               <ProcessCardComponent
                 :process="process"
@@ -45,8 +63,12 @@
             <h4 style="color: gray">{{ quantumCounter }}</h4>
           </div>
           <div class="process-executing">
-            <div class="animation-execution-wrapper">
+            <div
+              class="animation-execution-wrapper"
+              :class="{ 'animation-pause': !running }"
+            >
               <ProcessCardComponent
+                :class="{ 'animation-pause': !running }"
                 v-if="currentProcessExecutionAnimate"
                 id="current-process-executing"
                 :process="currentProcessExecutionAnimate"
@@ -54,6 +76,7 @@
             </div>
             <ProcessCardComponent
               class="current-process"
+              :class="{ 'animation-pause': !running }"
               v-if="currentProcessExecution"
               :process="currentProcessExecution"
             ></ProcessCardComponent>
@@ -64,6 +87,7 @@
           <section class="process-carriage">
             <ProcessCardComponent
               class="process-carriaging"
+              :class="{ 'animation-pause': !running }"
               v-if="processCarriage"
               :process="processCarriage"
             ></ProcessCardComponent>
@@ -76,16 +100,22 @@
         </div>
         <section
           class="processes-finished"
+          :class="{ 'animation-pause': !running }"
           :style="`justify-content: ${styleFinish}`"
         >
-          <div class="process-finished">
+          <div
+            class="process-finished"
+            :class="{ 'animation-pause': !running }"
+          >
             <ProcessCardComponent
+              :class="{ 'animation-pause': !running }"
               v-if="processFinished"
               :process="processFinished"
             ></ProcessCardComponent>
           </div>
           <div
             class="processes-finished-animate"
+            :class="{ 'animation-pause': !running }"
             style="display: flex; width: fit-content; height: fit-content"
           >
             <template
@@ -99,12 +129,23 @@
       </section>
     </section>
   </div>
+  <ReportComponent
+    v-if="showReport"
+    style="position: absolute; z-index: 3"
+    :processesPreemptive="processesPreemptive"
+    :processesNonpreemptive="processesNonpreemptive"
+    :processes="finishedProcesses"
+    @onCloseReport="closeReport"
+  ></ReportComponent>
 </template>
 
 <script setup lang="ts">
-import {ref, defineProps, onMounted, watch, computed} from "vue";
+import { ref, defineProps, onMounted, watch, computed } from "vue";
+import ReportComponent from "./ReportComponent.vue";
 import ProcessCardComponent from "./ProcessCardComponent.vue";
 import { writeProcessCharacter } from "@/services/api.service";
+import { users } from "@/utils/utils";
+import Process from "@/models/process.model";
 
 const animationMoveToLeftDelay = 900;
 const styleFinish = ref("end");
@@ -114,6 +155,7 @@ const finishedProcesses = ref<any[]>([]);
 let currentProcessExecution = ref();
 const currentProcessExecutionAnimate = ref();
 const running = ref(false);
+const paused = ref(false);
 const processReadyToExecute = ref();
 const processCarriage = ref();
 const processFinished = ref();
@@ -123,7 +165,11 @@ const totalQuantum = ref(0);
 const processHasEnded = ref(false);
 let simulationInterval: number | null = null;
 const simulationHasEnded = ref(false);
+const isProcessBeingExecuted = ref(false);
 const interval = ref(2500);
+const processesPreemptive = ref<Process[]>();
+const processesNonpreemptive = ref<Process[]>();
+const showReport = ref(false);
 
 onMounted(() => {
   processList.value = [...props.processes];
@@ -133,8 +179,17 @@ watch(props, (_) => {
   processList.value = [...props.processes];
 });
 
+const closeReport = () => {
+  processesPreemptive.value = undefined;
+  processesNonpreemptive.value = undefined;
+  showReport.value = false;
+  simulationHasEnded.value = false;
+  stopSimulation();
+};
+
 const startSimulation = () => {
   running.value = true;
+  paused.value = false;
   simulationInterval = setInterval(simulationStep, interval.value);
 };
 
@@ -144,6 +199,7 @@ const pauseSimulation = () => {
     clearInterval(simulationInterval);
     simulationInterval = null;
   }
+  paused.value = true;
 };
 
 const resumeSimulation = () => {
@@ -153,6 +209,27 @@ const resumeSimulation = () => {
   }
 };
 
+const stopSimulation = () => {
+  running.value = false;
+  paused.value = false;
+  if (simulationInterval) {
+    clearInterval(simulationInterval);
+    simulationInterval = null;
+  }
+  timeCount.value = 0;
+  quantumCounter.value = 0;
+  totalQuantum.value = 0;
+  processHasEnded.value = false;
+  processList.value = [...props.processes];
+  finishedProcesses.value = [];
+  processReadyToExecute.value = null;
+  processCarriage.value = null;
+  processFinished.value = null;
+  currentProcessExecution.value = null;
+  currentProcessExecutionAnimate.value = null;
+  simulationHasEnded.value = false;
+};
+
 const simulationStep = () => {
   if (!running.value) {
     return;
@@ -160,19 +237,22 @@ const simulationStep = () => {
   animateProcessReady();
 };
 
-
 async function writeCharacterToFile(process: any) {
   await writeProcessCharacter(process.PID, process.name, process.description);
 }
 
 const animateProcessReady = async () => {
   const element = document.querySelector(".processes-wrapper");
-  if (element) {
+  if (
+    element &&
+    !isProcessBeingExecuted.value &&
+    processList.value.length > 0
+  ) {
     if (finishedProcesses.value.length > 5) {
       styleFinish.value = "start";
     }
 
-    if (!running.value){
+    if (!running.value) {
       return;
     }
 
@@ -187,21 +267,16 @@ const animateProcessReady = async () => {
       });
     }
 
-    if (!running.value){
-      return;
-    }
-
     element.classList.add("move-to-left");
     await delay(animationMoveToLeftDelay);
-    element.classList.remove("move-to-left");
 
-    if (!running.value){
-      return;
-    }
+    element.classList.remove("move-to-left");
 
     let processAux = { ...processList.value.shift() };
     processReadyToExecute.value = processAux;
+
     await delay(100);
+
     const processToMoveFromCurrentToDown = document.querySelector(
       "#process-ready-to-execute"
     );
@@ -209,8 +284,15 @@ const animateProcessReady = async () => {
       processToMoveFromCurrentToDown.classList.add("move-to-execution");
       await delay(200);
     }
+
+    console.log("first");
+
     currentProcessExecutionAnimate.value = processAux;
+
     await delay(100);
+
+    console.log("second");
+
     processToMoveFromCurrentToDown?.classList.remove("move-to-execution");
     processReadyToExecute.value = null;
     const processToMoveFromUpToCurrent = document.querySelector(
@@ -222,12 +304,19 @@ const animateProcessReady = async () => {
       processToMoveFromUpToCurrent.classList.remove("move-in-execution");
       currentProcessExecutionAnimate.value = null;
     }
+
+    console.log("third");
+
     currentProcessExecution.value = processAux;
     await delay(100);
 
     //TODO: 🕗 EN EJECUCION ------------------------>
-    while (quantumCounter.value < props.quantum) {
-      await delay(props.th/2);
+    while (
+      quantumCounter.value < props.quantum ||
+      users.includes(processAux.user)
+    ) {
+      isProcessBeingExecuted.value = true;
+      await delay(props.th / 2);
       quantumCounter.value++;
       processAux.quantum++;
       timeCount.value++;
@@ -239,14 +328,17 @@ const animateProcessReady = async () => {
 
       await writeCharacterToFile(processToSlice);
 
-      await delay(props.th/2);
+      await delay(props.th / 2);
 
       if (processToSlice.description.length >= processAux.description.length) {
         processHasEnded.value = true;
         break;
       }
     }
+
     totalQuantum.value += props.quantum;
+
+    console.log("fourth");
 
     const processToMoveFromCurrentToRight =
       document.querySelector(".current-process");
@@ -256,6 +348,9 @@ const animateProcessReady = async () => {
       processToMoveFromCurrentToRight.classList.remove("move-to-right");
       currentProcessExecution.value = null;
     }
+
+    console.log("fifth");
+
     processCarriage.value = processAux;
     await delay(100);
     const processCarriaging = document.querySelector(".process-carriaging");
@@ -263,13 +358,17 @@ const animateProcessReady = async () => {
       processCarriaging.classList.add("move-to-end");
       await delay(animationMoveToLeftDelay);
       processCarriaging.classList.remove("move-to-end");
-      currentProcessExecution.value = null;
     }
+
+    console.log("sixth");
     processFinished.value = processAux;
+    currentProcessExecution.value = null;
 
     await delay(100);
+
     quantumCounter.value = 0;
 
+    isProcessBeingExecuted.value = false;
     if (processHasEnded.value) {
       const processFinishing = document.querySelector(".process-finished");
       if (processFinishing && finishedProcesses.value.length < 6) {
@@ -292,8 +391,10 @@ const animateProcessReady = async () => {
         processFinishing.classList.remove("move-to-finish");
       }
       finishedProcesses.value.push(processAux);
-      finishedProcesses.value = updateProcess(processAux, finishedProcesses.value);
-
+      finishedProcesses.value = updateProcess(
+        processAux,
+        finishedProcesses.value
+      );
     } else {
       processList.value.push(processAux);
       processList.value = updateProcess(processAux, processList.value);
@@ -302,21 +403,43 @@ const animateProcessReady = async () => {
     processHasEnded.value = false;
     processFinished.value = null;
 
-    if (processList.value.length <= 0){
+    if (processList.value.length <= 0) {
       running.value = false;
       simulationHasEnded.value = true;
     }
   }
+  if (simulationHasEnded.value) {
+    processesPreemptive.value = finishedProcesses.value
+      .filter((p): boolean => !p.systemProcess)
+      .map((p): Process => mapProcessPreemptive(p));
+    processesNonpreemptive.value = finishedProcesses.value
+      .filter((p): boolean => p.systemProcess)
+      .map((p): Process => mapProcessPreemptive(p));
+    showReport.value = true;
+  }
+};
+
+const mapProcessPreemptive = (process: Process) => {
+  return {
+    ...process,
+    p: process.name,
+    tl: process.timeArrive,
+    r: process.r,
+    pr: process.priority,
+    tr: process.tr,
+    tf: process.tf,
+  };
 };
 
 const updateProcess = (process: any, list: any[]) => {
+  const totalTimeExecuted = timeCount.value;
   const times = process.timesExecuted + 1;
   list = list.map((p) => {
     if (p.PID === process.PID) {
       return {
         ...p,
         timesExecuted: times,
-        tf: `${times * totalQuantum.value} (${(times * timeCount.value)})`,
+        tf: `${times * totalQuantum.value} (${totalTimeExecuted})`,
       };
     }
     return p;
@@ -334,31 +457,37 @@ const delay = (ms: number) => {
   animation-name: moveToFinish;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 .move-to-end {
   animation-name: moveToEnd;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 .move-to-right {
   animation-name: moveToRight;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 .move-in-execution {
   animation-name: moveInExecution;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 .move-to-execution {
   animation-name: moveToExecution;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 .move-to-left {
   animation-name: moveToLeft;
   animation-duration: 1s;
   animation-play-state: running;
+  animation-fill-mode: forwards;
 }
 
 .animation-pause {
@@ -469,7 +598,7 @@ const delay = (ms: number) => {
   display: flex;
   padding: 10px;
   width: 90%;
-  height: 140px;
+  height: 160px;
   background: rgb(235, 235, 235);
   border-radius: 15px;
   box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
@@ -481,7 +610,7 @@ const delay = (ms: number) => {
   position: relative;
   padding: 10px;
   width: 90%;
-  height: 140px;
+  height: 160px;
   background: rgb(235, 235, 235);
   border-radius: 15px;
   box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.068) inset;
@@ -489,7 +618,7 @@ const delay = (ms: number) => {
   margin-top: 20px;
   overflow-y: hidden;
   display: flex;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 .process-executing {
   position: relative;
@@ -566,10 +695,24 @@ h3 {
 }
 .quantum-counter {
   position: absolute;
-  top: 110px;
+  top: 75px;
   left: 232px;
   padding: 5px;
   border-radius: 10px;
   border: 2px dashed gray;
+}
+button {
+  border: none;
+}
+#buttons {
+  font-size: 1.5em;
+  cursor: pointer;
+  color: rgb(0, 73, 0);
+}
+#buttons:hover {
+  color: blue;
+}
+#buttons.desactive {
+  color: gray;
 }
 </style>

@@ -6,6 +6,10 @@
     :style="{ background: process.color ?? '#3D8CC7' }"
     v-if="process"
   >
+    <span class="icon">
+      <i class="bi bi-gear-fill" v-if="process.systemProcess"></i>
+      <i class="bi bi-person-fill" v-else></i>
+    </span>
     <p style="font-size: large; font-weight: bold">
       {{ process.name.slice(0, 11) }}
     </p>
@@ -34,6 +38,7 @@ defineProps<{ process: Process; processId?: string }>();
 <!-- eslint-disable prettier/prettier -->
 <style scoped>
 .process {
+  position: relative;
   border: 1px solid rgb(48, 48, 48);
   border-radius: 15px;
   margin-right: 10px;
@@ -46,6 +51,7 @@ defineProps<{ process: Process; processId?: string }>();
   max-height: 128px;
   height: 128px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 p {
@@ -58,5 +64,12 @@ p {
 .timesexe,
 .timeended {
   font-size: 0.8em;
+}
+.icon {
+  position: absolute;
+  bottom: -22px;
+  left: -12px;
+  font-size: 3em;
+  color: rgba(0, 0, 0, 0.199);
 }
 </style>

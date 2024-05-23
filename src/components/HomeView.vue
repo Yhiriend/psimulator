@@ -38,8 +38,6 @@
         </select>
       </div>
     </div>
-
-    <ChartComponent v-model="chartProcesses" class="chart" />
   </section>
   <div class="simulator-wrapper" style="padding-bottom: 20px">
     <SimulatorComponent
@@ -52,9 +50,9 @@
 <!-- eslint-disable prettier/prettier -->
 <script setup lang="ts">
 import SimulatorComponent from "./SimulatorComponent.vue";
-import { getRandomColor } from "@/utils/utils";
+
+import { getRandomColor, users } from "@/utils/utils";
 import { onMounted, ref, watch, defineModel } from "vue";
-import ChartComponent from "./ChartComponent.vue";
 import { fetchCatalogues } from "@/services/api.service";
 
 const catalogSelectorOptions: any = ref([]);
@@ -78,6 +76,7 @@ const getProcesses = () => {
     .processes.map((p: any, index: number) => {
       return {
         ...p,
+        r: p.description.length,
         tr: getBurstTime(p.description, thInput.value ?? 1),
         timesExecuted: 0,
         timeArrive: index,
@@ -85,6 +84,7 @@ const getProcesses = () => {
         tf: 0,
         color: getRandomColor(colors.value),
         quantum: 0,
+        systemProcess: users.includes(p.user),
       };
     });
 };

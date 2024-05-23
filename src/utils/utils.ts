@@ -31,12 +31,26 @@ export const getRandomColor = (existingColors: string[]) => {
   return color;
 };
 
-export const createProcessFile = (processDescription: string, processName: string) => {
-  const blob = new Blob([processDescription], { type: 'text/plain' });
-  const link = document.createElement('a');
+export const createProcessFile = (
+  processDescription: string,
+  processName: string
+) => {
+  const blob = new Blob([processDescription], { type: "text/plain" });
+  const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `${processName}.txt`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
+};
+
+export const users = [
+  "NT AUTHORITY\\SYSTEM",
+  "SYSTEM",
+  "LOCAL SERVICE",
+  "NETWORK SERVICE",
+  "NT AUTHORITY\\SISTEMA",
+  "SISTEMA",
+  "SERVICIO LOCAL",
+  "SERVICIO DE RED",
+];
