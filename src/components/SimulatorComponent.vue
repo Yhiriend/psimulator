@@ -1,24 +1,26 @@
 <template>
   <div>
-    <button @click="startSimulation" :disabled="running">
-      <i
-        id="buttons"
-        :class="['bi bi-play-circle-fill', { desactive: running }]"
-      ></i>
-    </button>
-    <button @click="pauseSimulation" :disabled="!running">
-      <i
-        id="buttons"
-        :class="['bi bi-pause-circle-fill', { desactive: !running }]"
-      ></i>
-    </button>
-    <button @click="stopSimulation" :disabled="!running && !paused">
-      <i
-        id="buttons"
-        :class="['bi bi-stop-circle-fill', { desactive: !running && !paused }]"
-      ></i>
-    </button>
-    <p style="font-size: 1em; font-weight: bold">Time: {{ timeCount }}</p>
+    <div style="display: flex; justify-content: end; padding-right: 60px">
+      <button @click="startSimulation" :disabled="running || !inputsfilled">
+        <i
+            id="buttons"
+            :class="['bi bi-play-circle-fill', { desactive: running || !inputsfilled }]"
+        ></i>
+      </button>
+      <button @click="pauseSimulation" :disabled="!running">
+        <i
+            id="buttons"
+            :class="['bi bi-pause-circle-fill', { desactive: !running }]"
+        ></i>
+      </button>
+      <button @click="stopSimulation" :disabled="!running && !paused">
+        <i
+            id="buttons"
+            :class="['bi bi-stop-circle-fill', { desactive: !running && !paused }]"
+        ></i>
+      </button>
+    </div>
+    <p style="font-size: 1em; font-weight: bold; text-align: end; padding-right: 80px">Time: {{ timeCount }}</p>
     <!-- Lista de procesos -->
     <section class="simulator-wrapper">
       <section class="process-ready-wrapper">
@@ -132,24 +134,25 @@
   <ReportComponent
     v-if="showReport"
     style="position: absolute; z-index: 3"
-    :processesPreemptive="processesPreemptive"
-    :processesNonpreemptive="processesNonpreemptive"
+    :processesPreemptive="processesPreemptive ?? []"
+    :processesNonpreemptive="processesNonpreemptive ?? []"
     :processes="finishedProcesses"
     @onCloseReport="closeReport"
   ></ReportComponent>
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, onMounted, watch, computed } from "vue";
+import { ref, defineProps, onMounted, watch, defineEmits } from "vue";
 import ReportComponent from "./ReportComponent.vue";
 import ProcessCardComponent from "./ProcessCardComponent.vue";
 import { writeProcessCharacter } from "@/services/api.service";
 import { users } from "@/utils/utils";
 import Process from "@/models/process.model";
 
+const emits = defineEmits(['simulationIsRunning']);
 const animationMoveToLeftDelay = 900;
 const styleFinish = ref("end");
-const props = defineProps<{ quantum: number; th: number; processes: any[] }>();
+const props = defineProps<{ quantum: number; th: number; processes: any[]; inputsfilled: boolean }>();
 const processList = ref<any[]>([]);
 const finishedProcesses = ref<any[]>([]);
 let currentProcessExecution = ref();
@@ -190,6 +193,7 @@ const closeReport = () => {
 const startSimulation = () => {
   running.value = true;
   paused.value = false;
+  emits('simulationIsRunning', true);
   simulationInterval = setInterval(simulationStep, interval.value);
 };
 
@@ -228,6 +232,7 @@ const stopSimulation = () => {
   currentProcessExecution.value = null;
   currentProcessExecutionAnimate.value = null;
   simulationHasEnded.value = false;
+  emits('simulationIsRunning', false)
 };
 
 const simulationStep = () => {
@@ -570,7 +575,7 @@ const delay = (ms: number) => {
   display: flex;
   flex-direction: column;
   justify-content: start;
-  width: 1000px;
+  width: 95%;
   height: fit-content;
   background: white;
   margin: 20px;

@@ -1,33 +1,35 @@
 <!-- eslint-disable prettier/prettier -->
 <template>
-  <h1>Simulador de procesos (RR)</h1>
+  <h1 style="margin-top: 40px">Simulador de procesos (RR)</h1>
   <section style="display: flex; padding: 10px 50px">
     <div class="form-wrapper">
-      <div class="row">
-        <div class="group-input">
-          <label for="quantumInput">QUANTUM</label>
-          <input
+      <div class="group-input">
+        <label for="quantumInput">QUANTUM</label>
+        <input
             id="quantumInput"
             placeholder="Cantidad de quantum"
             type="number"
             v-model="quantumInput"
-          />
-        </div>
-        <div style="width: 20px"></div>
-        <div class="group-input">
-          <label for="thInput">TH (ms)</label>
-          <input
+            min="1"
+            :disabled="isDisable"
+        />
+      </div>
+      <div style="width: 20px"></div>
+      <div class="group-input">
+        <label for="thInput">TH (ms)</label>
+        <input
             id="thInput"
             placeholder="Tiempo del hilo (ms)"
             type="number"
             v-model="thInput"
-          />
-        </div>
+            min="1"
+            :disabled="isDisable"
+        />
       </div>
 
       <div class="group-input">
         <label for="catalogInput">Catalog</label>
-        <select id="catalogInput" v-model="selectorRef">
+        <select :disabled="isDisable" id="catalogInput" v-model="selectorRef">
           <option value="" disabled selected>Escoge un catalogo</option>
           <template
             v-for="(option, index) in catalogSelectorOptions"
@@ -44,6 +46,8 @@
       :processes="processes ?? []"
       :quantum="quantumInput ?? 1"
       :th="thInput ?? 1"
+      :inputsfilled="inputsfilled"
+      @simulation-is-running="isRunning"
     />
   </div>
 </template>
@@ -61,8 +65,16 @@ const processes = ref<any[]>();
 const quantumInput = ref<number>(1);
 const thInput = ref<number>(1);
 const colors = ref([]);
-const chartProcesses = ref();
+const inputsfilled = ref(false);
+const isDisable = ref(false);
 
+const isRunning = (value: boolean) => {
+  if (value){
+    isDisable.value = true;
+  } else {
+    isDisable.value = false;
+  }
+};
 const getBurstTime = (word: string, threadTime: number) => {
   //if (word.includes(" ")) {
   //  return word.split(" ").join("").length * threadTime;
@@ -97,9 +109,24 @@ onMounted(async () => {
   catalogSelectorOptions.value = await getCatalogues();
 });
 
+const updateInputs = () => {
+  if (thInput.value && quantumInput.value){
+    inputsfilled.value = true;
+  }else {
+    inputsfilled.value = false;
+  }
+}
+
 watch(selectorRef, (_) => {
   processes.value = getProcesses();
   console.log("processes selected", processes.value);
+  updateInputs();
+});
+watch(quantumInput, (_) => {
+  updateInputs();
+});
+watch(thInput, (_) => {
+  updateInputs();
 });
 </script>
 
@@ -115,11 +142,14 @@ watch(selectorRef, (_) => {
   border-radius: 20px;
   background: rgb(255, 255, 255);
   box-shadow: 10px 10px 20px 1px rgba(0, 0, 0, 0.11);
+  display: flex;
+  justify-content: space-evenly;
 }
 
 .group-input {
   display: flex;
   flex-direction: column;
+  margin: 20px;
 }
 
 select {
@@ -137,11 +167,5 @@ input {
   border: 1px solid gray;
   border-radius: 15px;
   padding: 5px 8px;
-}
-
-.row {
-  display: flex;
-  justify-content: space-evenly;
-  margin-bottom: 20px;
 }
 </style>

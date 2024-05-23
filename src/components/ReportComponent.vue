@@ -2,8 +2,8 @@
   <section class="main-wrapper">
     <div class="content-report">
       <span><i @click="closeReport" class="bi bi-x"></i></span>
-      <h2 style="margin-top: 20px">Procesos expulsivos</h2>
-      <div class="table-preemptive">
+      <h2 v-if="processesPreemptive.length > 0" style="margin-top: 20px">Procesos expulsivos</h2>
+      <div v-if="processesPreemptive.length > 0" class="table-preemptive">
         <table class="table">
           <thead class="table-dark">
             <tr>
@@ -32,8 +32,8 @@
           </tbody>
         </table>
       </div>
-      <h2>Procesos no expulsivos</h2>
-      <div class="table-nonpreemptive">
+      <h2 v-if="processesNonpreemptive.length > 0">Procesos no expulsivos</h2>
+      <div v-if="processesNonpreemptive.length > 0" class="table-nonpreemptive">
         <table class="table">
           <thead class="table-dark">
             <tr>
@@ -97,7 +97,7 @@ const closeReport = () => {
   justify-content: center;
   align-items: center;
   backdrop-filter: blur(5px);
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 .content-report {
   position: relative;
@@ -105,7 +105,8 @@ const closeReport = () => {
   height: 80%;
   width: 80%;
   background: white;
-  max-height: fit-content;
+  max-height: 100vh;
+  overflow-y: scroll;
 }
 span {
   position: absolute;
