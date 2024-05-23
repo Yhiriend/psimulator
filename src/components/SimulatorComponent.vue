@@ -277,6 +277,7 @@ const animateProcessReady = async () => {
 
     element.classList.remove("move-to-left");
 
+    const listAux = processList.value.length;
     let processAux = { ...processList.value.shift() };
     processReadyToExecute.value = processAux;
 
@@ -318,7 +319,7 @@ const animateProcessReady = async () => {
     //TODO: 🕗 EN EJECUCION ------------------------>
     while (
       quantumCounter.value < props.quantum ||
-      processAux.systemProcess
+      processAux.systemProcess || listAux === 1
     ) {
       isProcessBeingExecuted.value = true;
       await delay(props.th / 2);

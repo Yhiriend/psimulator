@@ -10,8 +10,8 @@
       <i class="bi bi-gear-fill" v-if="process.systemProcess"></i>
       <i class="bi bi-person-fill" v-else></i>
     </span>
-    <p style="font-size: large; font-weight: bold">
-      {{ process.name.slice(0, 11) }}
+    <p style="font-size: small; font-weight: bold">
+      {{ process.name }}
     </p>
     <p class="pid">
       <span style="color: black; opacity: 0.5">PID</span> {{ process.PID }}
@@ -26,6 +26,10 @@
     <p class="timesexe">
       <span style="color: black; opacity: 0.5">Ejecuciones</span>
       {{ process.timesExecuted ?? 0 }}
+    </p>
+    <p class="timesexe">
+      <span style="color: black; opacity: 0.5">Length</span>
+      {{ process.name.length }}
     </p>
   </div>
 </template>
