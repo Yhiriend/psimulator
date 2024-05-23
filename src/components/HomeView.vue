@@ -96,7 +96,7 @@ const getProcesses = () => {
         tf: 0,
         color: getRandomColor(colors.value),
         quantum: 0,
-        systemProcess: users.includes(p.user),
+        systemProcess: users.includes(p.user.toUpperCase()),
       };
     });
 };
