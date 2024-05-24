@@ -133,8 +133,6 @@ const animateProcessReady = async () => {
     if (!running.value) {
       return;
     }
-
-    //TODO: 🕗 EN EJECUCION ------------------------>
     while (
       quantumCounter.value < props.quantum ||
       users.includes(processAux.user)

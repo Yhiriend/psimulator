@@ -10,7 +10,6 @@ import { onMounted, onBeforeUnmount, ref, defineProps } from "vue";
 const props = defineProps<{ processes: any[] }>();
 const chartInstance = ref<Chart | null>(null);
 
-//const labels = ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"];
 const labels = ref();
 
 onMounted(() => {

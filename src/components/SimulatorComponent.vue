@@ -316,7 +316,6 @@ const animateProcessReady = async () => {
     currentProcessExecution.value = processAux;
     await delay(100);
 
-    //TODO: 🕗 EN EJECUCION ------------------------>
     while (
       quantumCounter.value < props.quantum ||
       processAux.systemProcess || listAux === 1
